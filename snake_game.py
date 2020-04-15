@@ -184,7 +184,6 @@ class GemGfx:
 
 
 if __name__ == "__main__":
-    print("Snake 3.0")
 
     player_type = sys.argv[1]
     p = None
