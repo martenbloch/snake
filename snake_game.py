@@ -196,6 +196,8 @@ if __name__ == "__main__":
             p = player.HumanPlayerSaveState(player.HumanPlayer(), dump_file)
         else:
             p = player.HumanPlayer()
+    elif player_type == "bfs":
+        p = player.BfsPlayer()
     else:
         print("Incorrect player type: {}".format(player_type))
         exit()
