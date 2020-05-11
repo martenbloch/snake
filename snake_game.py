@@ -95,12 +95,13 @@ class Gem:
 
 
 class SnakeGame:
-    def __init__(self, a_player, a_renderer):
+    def __init__(self, a_player, a_renderer, a_speed):
         self.player = a_player
         self.renderer = a_renderer
         self.board = Board(11, 11)
-        self.snake_route = snake.Snake(1, (5, 5))
+        self.snake_route = snake.Snake([(5, 5)])
         self.gem = Gem(*self.generate_gem_new_pos())
+        self.speed = a_speed
 
     def set_direction(self, a_direction):
         self.snake_route.set_dir(a_direction)
@@ -122,17 +123,18 @@ class SnakeGame:
 
     def run(self):
         timer_event = pygame.USEREVENT + 1
-        pygame.time.set_timer(timer_event, 150)
+        pygame.time.set_timer(timer_event, self.speed)
 
         while True:
             # create game state object
             # TODO: move to helper function
-            gstate = game_engine.GameState()
-            gstate.board_w = self.board.w
-            gstate.board_h = self.board.h
-            gstate.gem_x = self.gem.x
-            gstate.gem_y = self.gem.y
-            gstate.snake = self.snake_route
+            #gstate = game_engine.GameState()
+            #gstate.board_w = self.board.w
+            #gstate.board_h = self.board.h
+            #gstate.gem_x = self.gem.x
+            #gstate.gem_y = self.gem.y
+            #gstate.snake = self.snake_route
+            gstate = self.get_game_state()
 
             for event in pygame.event.get(timer_event):
                 if event.type == timer_event:
@@ -140,6 +142,7 @@ class SnakeGame:
                     self.set_direction(direction)
                     if self.step() == False:
                         print("Game over, points: {}".format(self.snake_route.length-1))
+                        self.player.game_over()
                         return
             self.renderer.render_gem(self.gem)
             self.renderer.render_snake(self.snake_route)
@@ -158,6 +161,18 @@ class SnakeGame:
 
     def get_snake(self):
         return self.snake_route
+
+    def get_points(self):
+        return self.snake_route.length-1
+
+    def get_game_state(self):
+        gstate = game_engine.GameState()
+        gstate.board_w = self.board.w
+        gstate.board_h = self.board.h
+        gstate.gem_x = self.gem.x
+        gstate.gem_y = self.gem.y
+        gstate.snake = self.snake_route
+        return gstate
 
 
 class SnakeGfx:
@@ -205,7 +220,7 @@ if __name__ == "__main__":
     pygame.init()
     renderer = PygameRenderer()
 
-    game = SnakeGame(p, renderer)
+    game = SnakeGame(p, renderer, 100)
     game.run()
 
     if player_type == "human" and sys.argv[2]:

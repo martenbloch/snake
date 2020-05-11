@@ -58,13 +58,16 @@ def game_state_to_training_data(a_game_state, a_direction):
     elif a_game_state.gem_y == sy and a_game_state.gem_x > sx:
         angle = 0
     else:
-        angle = math.atan(abs(a_game_state.gem_y - sy)/abs(a_game_state.gem_x - sx))*180/math.pi
-        if a_game_state.gem_x < sx and a_game_state.gem_y < sy:
-            angle += 90
-        elif a_game_state.gem_x < sx and a_game_state.gem_y > sy:
-            angle += 180
-        elif a_game_state.gem_x > sx and a_game_state.gem_y > sy:
-            angle += 270
+        if sx == a_game_state.gem_x and sy == a_game_state.gem_y:
+            angle = 0
+        else:
+            angle = math.atan(abs(a_game_state.gem_y - sy)/abs(a_game_state.gem_x - sx))*180/math.pi
+            if a_game_state.gem_x < sx and a_game_state.gem_y < sy:
+                angle += 90
+            elif a_game_state.gem_x < sx and a_game_state.gem_y > sy:
+                angle += 180
+            elif a_game_state.gem_x > sx and a_game_state.gem_y > sy:
+                angle += 270
 
     data.angle = angle / 360
     data.direction = a_direction
