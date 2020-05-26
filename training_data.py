@@ -19,7 +19,7 @@ class TrainingData:
         return data
 
     def get_input_data(self):
-        return [self.ml, self.mr, self.mu, self.md, self.angle]
+        return self.ml, self.mr, self.mu, self.md, self.angle
 
     def get_output_data(self):
         return self.direction.value
@@ -69,10 +69,34 @@ def game_state_to_training_data(a_game_state, a_direction):
             elif a_game_state.gem_x > sx and a_game_state.gem_y > sy:
                 angle += 270
 
-    data.angle = angle / 360
+    data.angle = round(angle / 360, 1)
     data.direction = a_direction
 
     return data
+
+
+def get_angle(x1, y1, x2, y2):
+    angle = 0
+    if x2 == x1 and y2 < y1:
+        angle = 90
+    elif x2 == x1 and y2 > y1:
+        angle = 270
+    elif y2 == y1 and x2 < x1:
+        angle = 180
+    elif y2 == y1 and x2 > x1:
+        angle = 0
+    else:
+        if x1 == x2 and y1 == y2:
+            angle = 0
+        else:
+            angle = math.atan(abs(y2 - y1)/abs(x2 - x1))*180/math.pi
+            if x2 < x1 and y2 < y1:
+                angle += 90
+            elif x2 < x1 and y2 > y1:
+                angle += 180
+            elif x2 > x1 and y2 > y1:
+                angle += 270
+    return angle
 
 
 class DataProcessor:
@@ -98,13 +122,15 @@ class RemoveDuplicates(DataProcessor):
 class FixDirection(DataProcessor):
 
     def process(self, a_data):
+        n = 0
         for i in range(len(a_data)):
             e = a_data[i]
             opt_dir = correct_direction(e.ml, e.mr, e.mu, e.md, e.angle, e.direction)
             if opt_dir != e.direction:
-                print("correct direction:{}, new dir:{}".format(e, opt_dir))
+                print("correct direction:   {}, new dir:{}".format(e, opt_dir))
+                n += 1
             a_data[i].direction = opt_dir
-
+        print("Size:{}, num of corections:{}".format(len(a_data), n))
 
 def correct_direction(ml, mr, mu, md, angle, direction):
     u_angle = angle*360

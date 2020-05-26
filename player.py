@@ -8,6 +8,8 @@ from common import Dir
 import training_data as dp
 import algorithms.graph_algorithms
 import copy
+import math
+
 
 class Player:
 
@@ -188,9 +190,9 @@ class RlPlayer(Player):
         self.q_table = {}
         self.prev_state = None
         self.prev_dir = None
-        self.prev_pts = None
-        self.gamma = 0.9
         self.epsilon = 1
+        self.learning_rate = 1
+        self.gamma = 0.5
 
         self.model = keras.Sequential([
             keras.layers.Flatten(input_shape=(1, 5)),
@@ -199,114 +201,93 @@ class RlPlayer(Player):
         ])
 
         self.model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
-        self.experience = []
 
     def get_direction(self, a_game_state):
-        print("get direction")
-        if random.randint(0, 1) < self.epsilon:
+        r = random.randint(0, 1)
+        if r < self.epsilon:
             direction = Dir(random.randint(0, 3))
         else:
-            s = dp.game_state_to_training_data(a_game_state, Dir.UP)
-            input_data = np.ndarray(shape=(1, 1, 5))
-            input_data[0] = s.get_input_data()
-            direction = Dir(np.argmax(self.model.predict(input_data)))
-            print("NN predict")
+            key = dp.game_state_to_training_data(a_game_state, Dir.UP).get_input_data()
+            direction = Dir(np.argmax(self.q_table.setdefault(key, [0, 0, 0, 0])))
 
         if self.prev_state:
-            is_game_over = False
-            reward = 0
-            if (a_game_state.snake.length-1) != self.prev_pts:
-                reward = 10
-            #self.experience.append([copy.deepcopy(self.prev_state), direction, reward, copy.deepcopy(a_game_state), is_game_over])
-            self.experience.append(self.create_training_data(copy.deepcopy(self.prev_state), direction, reward, copy.deepcopy(a_game_state), is_game_over))
+            reward = self.get_reward(self.prev_state, self.prev_dir, False)
 
-        self.train_on_batch()
+            key = dp.game_state_to_training_data(self.prev_state, self.prev_dir).get_input_data()
+            value = self.q_table.setdefault(key, [0, 0, 0, 0])
+
+            # update q value
+            max_future_reward = 0
+
+            new_key = tuple(dp.game_state_to_training_data(a_game_state, direction).get_input_data())
+            if new_key in self.q_table:
+                max_future_reward = max(self.q_table[new_key])
+
+            value[self.prev_dir.value] = (1 - self.learning_rate) * value[self.prev_dir.value] + self.learning_rate * (reward + self.gamma * max_future_reward)
 
         self.prev_state = copy.deepcopy(a_game_state)
         self.prev_dir = direction
-        self.prev_pts = a_game_state.snake.length - 1
 
         return direction
 
     def game_over(self):
-        reward = -10
-        self.experience.append(self.create_training_data(copy.deepcopy(self.prev_state), self.prev_dir, reward, copy.deepcopy(self.prev_state), True))
+        key = dp.game_state_to_training_data(self.prev_state, self.prev_dir).get_input_data()
+        value = self.q_table.setdefault(key, [0, 0, 0, 0])
+
+        value[self.prev_dir.value] = (1 - self.learning_rate) * value[self.prev_dir.value] + self.learning_rate * self.get_reward(self.prev_state, self.prev_dir, True)
 
         self.prev_state = None
         self.prev_dir = None
-        self.prev_pts = None
 
     def set_epsilon(self, a_val):
         self.epsilon = a_val
 
-    def train_on_batch(self):
+    def replay_memory(self, a_model_name):
 
-        batch_size = 10
-
-        if len(self.experience) == 0:
+        if len(self.q_table) == 0:
             return
 
-        size = min(batch_size, len(self.experience))
-        train_in = np.ndarray(shape=(size, 1, 5))
+        # remove items that were not fully explored
+        self.q_table = {k: v for k, v in self.q_table.items() if v[0] != 0 and v[1] != 0 and v[2] != 0 and v[3] != 0}
+
+        train_in = np.ndarray(shape=(len(self.q_table), 1, 5))
         train_out = []
-        exp = random.sample(self.experience, size)
 
-        for i in range(len(exp)):
-            t_in, t_out = exp[i]
-            train_in[i] = t_in
-            train_out.append(t_out)
-        self.model.fit(train_in, np.array(train_out), epochs=1)
-        """
-        
+        i = 0
+        for k, v in self.q_table.items():
+            train_in[i] = k
+            train_out.append(np.argmax(v))
+            i += 1
 
-        size = min(batch_size, len(self.experience))
-        train_inx = np.ndarray(shape=(size, 1, 5))
+        self.model.fit(train_in, np.array(train_out), epochs=200)
 
+        tf.keras.models.save_model(self.model, a_model_name, overwrite=True, include_optimizer=True)
 
-        exp = random.sample(self.experience, size)
-        print("train on batch :{}".format(len(exp)))
-        for e in exp:
-            reward = e[2]
+    def get_reward(self, a_state, a_direction, a_is_game_over):
 
-            train_in = dp.game_state_to_training_data(e[0], Dir.UP)
-            input_data = np.ndarray(shape=(1, 1, 5))
-            input_data[0] = train_in.get_input_data()
-            train_inx[0] = input_data
+        if a_is_game_over:
+            return -10
 
-            s = dp.game_state_to_training_data(e[3], Dir.UP)
-            si = np.ndarray(shape=(1, 1, 5))
-            si[0] = s.get_input_data()
-            qn = reward + self.gamma * self.model.predict(si).max()
+        t_in = dp.game_state_to_training_data(a_state, a_direction)
+        opt_dir = dp.correct_direction(t_in.ml, t_in.mr, t_in.mu, t_in.md, t_in.angle, a_direction)
 
-            #self.model.predict(si)
-            out = self.model.predict(input_data)
-            out[0][e[1].value] = qn
+        x1, y1 = a_state.snake.get_current_pos()
+        x2 = a_state.gem_x
+        y2 = a_state.gem_y
 
-            outputs.append(np.argmax(out))
-        self.model.fit(train_inx, np.array(outputs), epochs=1)
-        """
+        if a_direction == Dir.UP:
+            y1 = y1 - 1
+        elif a_direction == Dir.RIGHT:
+            x1 = x1 + 1
+        elif a_direction == Dir.LEFT:
+            x1 = x1 - 1
+        elif a_direction == Dir.DOWN:
+            y1 = y1 + 1
 
-    def create_training_data(self, a_state, a_direction, a_reward, a_next_state, a_is_game_over):
-        train_in = []
-        train_out = 0
+        if x1 == x2 and y1 == y2:
+            return 10
 
-        t_in = dp.game_state_to_training_data(a_state, Dir.UP)
-        train_in = t_in.get_input_data()
-
-        if a_is_game_over == False:
-            s = dp.game_state_to_training_data(a_next_state, Dir.UP)
-            si = np.ndarray(shape=(1, 1, 5))
-            si[0] = s.get_input_data()
-            qn = a_reward + self.gamma * self.model.predict(si).max()
+        if opt_dir.value == a_direction.value:
+            return 1
         else:
-            qn = a_reward
-
-        # self.model.predict(si)
-        input_data = np.ndarray(shape=(1, 1, 5))
-        input_data[0] = t_in.get_input_data()
-        out = self.model.predict(input_data)
-        out[0][a_direction.value] = qn
-
-        train_out = np.argmax(out)
-
-        return train_in, train_out
+            return -5
