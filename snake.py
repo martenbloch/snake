@@ -3,9 +3,9 @@ from common import Dir
 
 class Snake:
 
-    def __init__(self, length, pos):
-        self.length = length
-        self.route = [pos]
+    def __init__(self, route):
+        self.length = len(route)
+        self.route = route
         self.dir = Dir.DOWN
 
     def increase(self):

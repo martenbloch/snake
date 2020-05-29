@@ -9,3 +9,7 @@ class GameState:
 
     def __str__(self):
         return "w:{} h:{} gx:{} gy:{} s:{}".format(self.board_w, self.board_h, self.gem_x, self.gem_y, self.snake)
+
+    def __repr__(self):
+        return str(self)
+
