@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     epsilon_decay_linear = 1/75
     epsilon = 1
-    n_runs = 5000
+    n_runs = 2500
     pts = []
 
     for i in range(n_runs):
@@ -25,9 +25,9 @@ if __name__ == "__main__":
     print("----------FIANL RUN --------------")
 
     epsilon = 0
-    for i in range(500):
+    for i in range(20):
         print("episode:{}, epsilon:{}".format(i, epsilon))
-        game = snake_game.SnakeGame(p, renderer, 0, False)
+        game = snake_game.SnakeGame(p, renderer, 100, True)
         game.run()
         p.set_epsilon(epsilon)
         pts.append(game.get_points())

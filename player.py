@@ -192,7 +192,7 @@ class RlPlayer(Player):
         self.prev_dir = None
         self.epsilon = 1
         self.learning_rate = 1
-        self.gamma = 0.5
+        self.gamma = 0
 
         self.model = keras.Sequential([
             keras.layers.Flatten(input_shape=(1, 5)),

@@ -5,7 +5,7 @@ import sys
 import player
 import snake
 import game_engine
-
+from common import Dir
 
 class Renderer:
 
@@ -103,9 +103,21 @@ class SnakeGame:
         self.gem = Gem(*self.generate_gem_new_pos())
         self.speed = a_speed
         self.show_gui = a_show_gui
+        self.previous_direction = None
 
     def set_direction(self, a_direction):
+
+        if self.previous_direction == Dir.RIGHT and a_direction == Dir.LEFT:
+            a_direction = Dir.RIGHT
+        elif self.previous_direction == Dir.LEFT and a_direction == Dir.RIGHT:
+            a_direction = Dir.LEFT
+        elif self.previous_direction == Dir.UP and a_direction == Dir.DOWN:
+            a_direction = Dir.UP
+        elif self.previous_direction == Dir.DOWN and a_direction == Dir.UP:
+            a_direction = Dir.DOWN
+
         self.snake_route.set_dir(a_direction)
+        self.previous_direction = a_direction
 
     def step(self):
         if not self.snake_route.update_position():
